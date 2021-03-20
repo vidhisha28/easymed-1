@@ -1,60 +1,44 @@
 from django.urls import path
+from agora.views import Agora
 from . import views
 
 urlpatterns = [
-    path('', views.home, name='home'),
-    path('doctor/dashboard/', views.doctorDashboard, name='doctorDashboard'),
-    path('patient/dashboard/', views.patientDashboard, name='patientDashboard'),
-    path('patient/dashboard/appointments/',
-         views.patientAppointments, name='patientAppointments'),
-    path('patient/bookAppointment/<int:pk>',
-         views.bookAppointment, name='bookAppointment'),
-    path('doctor/dashboard/appointments/',
-         views.doctorAppointments, name='doctorAppointments'),
-    path('doctor/dashboard/appointments/<int:pk>/',
-         views.appointmentMedsdoc, name='appointmentMedsdoc'),
-    path('patient/dashboard/appointments/<int:pk>/',
-         views.appointmentMeds, name='appointmentMeds'),
-    path('doctor/dashboard/appointments/update/<int:pk>/',
-         views.updateAppointment, name='updateAppointment'),
-    path('doctor/dashboard/appointments/meds/update/<int:pk>/',
-         views.updateAppointmentMeds, name='updateAppointmentMeds'),
-     path('doctor/profile/update', views.doctorProfileUpdate,
-         name='doctorProfileUpdate'),
-    path('patient/profile/update', views.patientProfileUpdate,
-         name='patientProfileUpdate'),
-
-
-
+     path('', views.home, name='home'),
+     path('doctor/dashboard/', views.doctorDashboard, name='doctorDashboard'),
+     path('patient/dashboard/', views.patientDashboard, name='patientDashboard'),
+     path('patient/dashboard/appointments/',views.patientAppointments, name='patientAppointments'),
+     path('patient/bookAppointment/<int:pk>',views.bookAppointment, name='bookAppointment'),
+     path('doctor/dashboard/appointments/',views.doctorAppointments, name='doctorAppointments'),
+     path('doctor/dashboard/appointments/<int:pk>/',views.appointmentMedsdoc, name='appointmentMedsdoc'),
+     path('patient/dashboard/appointments/<int:pk>/',views.appointmentMeds, name='appointmentMeds'),
+     path('doctor/dashboard/appointments/update/<int:pk>/',views.updateAppointment, name='updateAppointment'),
+     path('doctor/dashboard/appointments/meds/update/<int:pk>/',views.updateAppointmentMeds, name='updateAppointmentMeds'),
+     path('doctor/profile/update', views.doctorProfileUpdate,name='doctorProfileUpdate'),
+     path('patient/profile/update', views.patientProfileUpdate,name='patientProfileUpdate'),
     #     path('pharmacist/dashboard/', views.pharmacistDashboard,
     #          name='pharmacistDashboard'),
-    path('pathologist/dashboard/', views.pathologistDashboard,
-         name='pathologistDashboard'),
+     path('pathologist/dashboard/', views.pathologistDashboard,name='pathologistDashboard'),
 
 
 
     # ------------------------------------------------------------------------------------------------------
     # all the pharmacy urls here
-    path('pharmacist/dashboard/', views.pharmacistDashboard,
-         name='pharmacistDashboard'),
+    path('pharmacist/dashboard/', views.pharmacistDashboard,name='pharmacistDashboard'),
     path('pharmacy/', views.pharmacy, name='pharmacy'),
     path('pharmacy/cart/', views.cart, name='cart'),
     path('walkin/cart/', views.walkincart, name='walkincart'),
     path('pharmacy/checkout/', views.customercheckout, name='checkout'),
     path('pharmacy/<int:pharmacyid>/', views.store, name='store'),
     path('pharmacy/update_item/', views.updateitem, name="update_item"),
-    path('pharmacy/update_item_walkin/',
-         views.updateitemwalkin, name="update_item_walkin"),
+    path('pharmacy/update_item_walkin/',views.updateitemwalkin, name="update_item_walkin"),
     path('pharmacist/stock/', views.stock, name='stock'),
     path('pharmacist/deleteproduct/', views.deleteproduct, name='deleteproduct'),
     path('pharmacist/addproduct/', views.addproduct, name='addproduct'),
     path('pharmacist/alertproducts/', views.alertproducts, name='alertproducts'),
     path('pharmacy/placeorder/', views.placeonlineorder, name='placeonlineorder'),
-    path('pharmacist/placeorder/', views.placeofflineorder,
-         name='placeofflineorder'),
+    path('pharmacist/placeorder/', views.placeofflineorder,name='placeofflineorder'),
     path('pharmacist/onlineorders/', views.onlineorders, name='onlineorders'),
-    path('pharmacist/onlineorderscomplete/',
-         views.onlineorderscomplete, name='onlineorderscomplete'),
+    path('pharmacist/onlineorderscomplete/',views.onlineorderscomplete, name='onlineorderscomplete'),
     path('pharmacist/walkinorders/', views.offlineorders, name='offlineorders'),
     path('pharmacy/ordersuccess/', views.ordersuccess, name='ordersuccess'),
     path('pharmacist/deliverorder/', views.deliverorder, name='deliverorder'),
@@ -107,7 +91,14 @@ urlpatterns = [
     #------------------------------------------------------------------------------------------------------
 
 
+     #video calling urls
+     #--------------------------------------------------
 
+     path('videocall/<int:meetingid>/',views.videocall,name="videocall"),
+
+
+     #video calling urls end
+     #-----------------------------------------------
 
 
 
