@@ -23,6 +23,7 @@ class MedecineForm(forms.ModelForm):
         model = Medecine
         fields = ['name', 'detail']
 
+
 class DoctorForm(forms.ModelForm):
     class Meta:
         model = Doctor
@@ -30,11 +31,24 @@ class DoctorForm(forms.ModelForm):
         exclude = ['user']
 
 
+class WorkingDaysForm(forms.ModelForm):
+    class Meta:
+        model = WorkingDays
+        fields = ['day_name']
+
+
+class TimeSlotsForm(forms.ModelForm):
+    class Meta:
+        model = TimeSlots
+        fields = ['start_time', 'end_time', 'day']
+
+
 class PatientForm(forms.ModelForm):
     class Meta:
         model = Patient
         fields = '__all__'
         exclude = ['user']
+
 
 class SymptomForm(forms.ModelForm):
     class Meta:
@@ -70,9 +84,8 @@ class AddProduct(forms.ModelForm):
 # ------------------------------------------------------------------
 
 
-
-#-----------------------------------------------------------------
-#pathology forms
+# -----------------------------------------------------------------
+# pathology forms
 
 
 class addpro(forms.ModelForm):
@@ -82,7 +95,5 @@ class addpro(forms.ModelForm):
         exclude = ['Pathologist']
 
 
-
-
-#pathology forms end
-#-------------------------------------------------------------------
+# pathology forms end
+# -------------------------------------------------------------------

@@ -2,6 +2,8 @@ from django.contrib import admin
 from .models import *
 
 admin.site.register(Doctor)
+admin.site.register(WorkingDays)
+admin.site.register(TimeSlots)
 admin.site.register(Patient)
 admin.site.register(Pharmacist)
 admin.site.register(Pathologist)
@@ -22,9 +24,8 @@ admin.site.register(WalkinCart)
 # ----------------------------------------------------
 
 
-
-#----------------------------------------------------
-#pathology registrations
+# ----------------------------------------------------
+# pathology registrations
 admin.site.register(labtest)
 
 admin.site.register(BookTest)
@@ -32,5 +33,5 @@ admin.site.register(Tests)
 admin.site.register(AnonyTests)
 admin.site.register(AddTests)
 
-#pathology Registration over
-#----------------------------------------------------
+# pathology Registration over
+# ----------------------------------------------------

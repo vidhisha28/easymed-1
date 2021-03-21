@@ -5,31 +5,73 @@ import os
 
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    open_time = models.TimeField(auto_now=False, auto_now_add=False,null= True, blank = True)
-    close_time = models.TimeField(auto_now=False, auto_now_add=False, null= True, blank = True)
-    speciality = models.CharField(max_length=100,null= True, blank = True)
-    city = models.CharField(max_length=100, null=True,blank = True)
+    open_time = models.TimeField(
+        auto_now=False, auto_now_add=False, null=True, blank=True)
+    close_time = models.TimeField(
+        auto_now=False, auto_now_add=False, null=True, blank=True)
+    speciality = models.CharField(max_length=100, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    slot_duration = models.TimeField(
+        auto_now=False, auto_now_add=False, null=True, blank=True)
 
     def __str__(self):
         return self.user.username
+
+
+DAY_CHOICES = (
+    ("Monday", "Monday"),
+    ("Tuesday", "Tuesday"),
+    ("Wednesday", "Wednesday"),
+    ("Thursday", "Thursday"),
+    ("Friday", "Friday"),
+    ("Saturday", "Saturday"),
+    ("Sunday", "Sunday")
+)
+
+
+class WorkingDays(models.Model):
+    doctor = models.ForeignKey(
+        Doctor, null=True, blank=True, on_delete=models.CASCADE)
+    day_name = models.CharField(
+        max_length=50, null=True, blank=True, choices=DAY_CHOICES, default='')
+
+    def __str__(self):
+        return self.day_name
+
+
+class TimeSlots(models.Model):
+    day = models.ForeignKey(WorkingDays, null=True,
+                            blank=True, on_delete=models.CASCADE)
+    start_time = models.TimeField(
+        auto_now=False, auto_now_add=False, null=True, blank=True)
+    end_time = models.TimeField(
+        auto_now=False, auto_now_add=False, null=True, blank=True)
+    occupied = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.day.doctor.user.username
 
 
 class Patient(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone = models.CharField(max_length=100, null=True)
     city = models.CharField(max_length=100, null=True)
-    address = models.CharField(max_length = 200, null = True, blank = True)
+    address = models.CharField(max_length=200, null=True, blank=True)
+
     def __str__(self):
         return self.user.username
 
 
 class Appointment(models.Model):
+    time_slot = models.OneToOneField(
+        TimeSlots, null=True, blank=True, on_delete=models.CASCADE)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     alloted_time = models.TimeField(
         auto_now=False, null=True, blank=True, auto_now_add=False)
     meeting_link = models.URLField(max_length=200, blank=True)
     date_made = models.DateTimeField(auto_now_add=True)
+
 
 class Medecine(models.Model):
     appointment = models.ForeignKey(
@@ -181,15 +223,11 @@ class WalkinCart(models.Model):
 # -----------------------------------------------------------------------------------
 
 
-
-
-#------------------------------------------------------------
-#new midels
-
-
+# ------------------------------------------------------------
+# new midels
 SYMPTOM_CHOICES = (
     ("itching", "itching"),
-    ("skin_rash","skin_rash"),
+    ("skin_rash", "skin_rash"),
     ("nodal_skin_eruptions", "nodal_skin_eruptions"),
     ("continuous_sneezing", "continuous_sneezing"),
     ("shivering", "shivering"),
@@ -197,7 +235,7 @@ SYMPTOM_CHOICES = (
     ("joint_pain", "joint_pain"),
     ("stomach_pain", "stomach_pain"),
     ("acidity", "acidity"),
-    ("ulcers_on_tongue","ulcers_on_tongue"),
+    ("ulcers_on_tongue", "ulcers_on_tongue"),
     ("muscle_wasting vomiting", "muscle_wasting vomiting"),
     ("burning_micturition", "burning_micturition"),
     ("spotting_ urination", "spotting_ urination"),
@@ -268,7 +306,7 @@ SYMPTOM_CHOICES = (
     ("knee_pain", "knee_pain"),
     ("hip_joint_pain", "hip_joint_pain"),
     ("muscle_weakness", "muscle_weakness"),
-    (" stiff_neck"," stiff_neck"),
+    (" stiff_neck", " stiff_neck"),
     ("swelling_joints", "swelling_joints"),
     ("movement_stiffness", "movement_stiffness"),
     ("spinning_movements", "spinning_movements"),
@@ -309,7 +347,7 @@ SYMPTOM_CHOICES = (
     ("prominent_veins_on_calf", "prominent_veins_on_calf"),
     ("palpitations", "palpitations"),
     ("painful_walking", "painful_walking"),
-    ("pus_filled_pimples","pus_filled_pimples"),
+    ("pus_filled_pimples", "pus_filled_pimples"),
     ("blackheads", "blackheads"),
     ("scurring", "scurring"),
     ("skin_peeling", "skin_peeling"),
@@ -328,11 +366,8 @@ class Symptom(models.Model):
     name = models.CharField(max_length=50, choices=SYMPTOM_CHOICES, default='')
 
 
-
-
-
-#------------------------------------------------------------------------------------
-#Pathologist models
+# ------------------------------------------------------------------------------------
+# Pathologist models
 
 class Pathologist(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -340,13 +375,16 @@ class Pathologist(models.Model):
     qualification = models.CharField(max_length=98, null=True)
     PathoName = models.CharField(max_length=100, null=True)
     PathoAddress = models.CharField(max_length=200, null=True)
-    Pathoimage = models.ImageField(upload_to='pathology', null=True, blank=True)
+    Pathoimage = models.ImageField(
+        upload_to='pathology', null=True, blank=True)
+
     def __str__(self):
         return self.user.username
 
 
 class labtest(models.Model):
-    Pathologist = models.ForeignKey(Pathologist, on_delete=models.SET_NULL, blank=True, null=True)
+    Pathologist = models.ForeignKey(
+        Pathologist, on_delete=models.SET_NULL, blank=True, null=True)
     name = models.CharField(max_length=100, null=True)
     image = models.ImageField(upload_to='products', null=True, blank=True)
     price = models.FloatField()
@@ -361,7 +399,8 @@ class labtest(models.Model):
 
 
 class BookTest(models.Model):
-    customer = models.ForeignKey(Patient, on_delete=models.SET_NULL, blank=True, null=True)
+    customer = models.ForeignKey(
+        Patient, on_delete=models.SET_NULL, blank=True, null=True)
     date_ordered = models.DateTimeField(auto_now_add=True)
     complete = models.BooleanField(default=False, null=True, blank=False)
     delivered = models.BooleanField(default=False, null=True, blank=False)
@@ -390,10 +429,12 @@ class BookTest(models.Model):
                 return False
         return True
 
+
 class Tests(models.Model):
-    product = models.ForeignKey(labtest, on_delete=models.SET_NULL,null=True)
-    order = models.ForeignKey(BookTest, on_delete=models.SET_NULL, blank = True, null= True)
-    quantity =  models.IntegerField(default=0, null=True, blank=True)
+    product = models.ForeignKey(labtest, on_delete=models.SET_NULL, null=True)
+    order = models.ForeignKey(
+        BookTest, on_delete=models.SET_NULL, blank=True, null=True)
+    quantity = models.IntegerField(default=0, null=True, blank=True)
     date_added = models.DateTimeField(auto_now=True)
 
     @property
@@ -401,11 +442,13 @@ class Tests(models.Model):
         total = self.product.price * self.quantity
         return total
 
+
 class AnonyTests(models.Model):
-    customer = models.ForeignKey(Pathologist, on_delete=models.SET_NULL,blank=True,null=True)
+    customer = models.ForeignKey(
+        Pathologist, on_delete=models.SET_NULL, blank=True, null=True)
     date_ordered = models.DateTimeField(auto_now_add=True)
-    complete = models.BooleanField(default=False,null=True,blank=False)
-    transaction_id = models.CharField(max_length=200,blank = True ,null=True)
+    complete = models.BooleanField(default=False, null=True, blank=False)
+    transaction_id = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return str(self.id)
@@ -415,10 +458,11 @@ class AnonyTests(models.Model):
         orderitems = self.addtests_set.all()
         total = sum([item.get_total for item in orderitems])
         return total
+
     @property
     def get_tests_items(self):
         orderitems = self.addtests_set.all()
-        total= sum([item.quantity for item in orderitems])
+        total = sum([item.quantity for item in orderitems])
         return total
 
     @property
@@ -431,14 +475,16 @@ class AnonyTests(models.Model):
 
 
 class AddTests(models.Model):
-    product = models.ForeignKey(labtest, on_delete=models.SET_NULL,blank=True,null=True)
-    order = models.ForeignKey(AnonyTests, on_delete=models.SET_NULL, blank = True, null= True)
-    quantity =  models.IntegerField(default=0, null=True, blank=True)
+    product = models.ForeignKey(
+        labtest, on_delete=models.SET_NULL, blank=True, null=True)
+    order = models.ForeignKey(
+        AnonyTests, on_delete=models.SET_NULL, blank=True, null=True)
+    quantity = models.IntegerField(default=0, null=True, blank=True)
     date_added = models.DateTimeField(auto_now=True)
 
     @property
     def get_total(self):
         total = self.product.price * self.quantity
         return total
-#Pathologist models end
-#-----------------------------------------------------------------------------------
+# Pathologist models end
+# -----------------------------------------------------------------------------------

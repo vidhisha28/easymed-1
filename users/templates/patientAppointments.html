@@ -11,17 +11,19 @@
             <div class="cart-row">
                 <div style="flex: 1;"><strong>Doctor's Name</strong></div>
                 <div style="flex: 1;"><strong>Speciality</strong></div>
+                <div style="flex: 1;"><strong>Day</strong></div>
                 <div style="flex: 1;"><strong>Time</strong></div>
-                <div style="flex: 1;"><strong>Meeting Link</strong></div>
-                <div style="flex: 1;"><strong>Date</strong></div>
+                <div style="flex: 2;"><strong>Meeting Link</strong></div>
+                <div style="flex: 1;"><strong>Date when Booked</strong></div>
                 <div style="flex: 1;"><strong>Details</strong></div>
             </div>
 {% for i in appointments %}
     <div class="cart-row">
         <div style="flex: 1;">{{i.doctor}}</div>
         <div style="flex: 1;">{{i.doctor.speciality}}</div>
-        <div style="flex: 1;">{{i.alloted_time}}</div>
-        <div style="flex: 1;">{{i.meeting_link}}</div>
+        <div style="flex: 1;">{{i.time_slot.day.day_name}}</div>
+        <div style="flex: 1;">{{i.time_slot.start_time}}-{{i.time_slot.end_time}}</div>
+        <div style="flex: 2;">{{i.meeting_link}}</div>
         <div style="flex: 1;">{{i.date_made}}</div>
         <div style="flex: 1;"><a href="{% url 'appointmentMeds' i.id %}" class="btn btn-sm btn-primary">Details</a></div>
     </div>

@@ -28,6 +28,23 @@
         return cookieValue;
       }
       var csrftoken = getCookies('csrftoken');
+{% comment %} 
+          fetch('http://localhost:8000/patient/dashboard/', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers:{
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest', //Necessary to work with request.is_ajax()
+              'X-CSRFToken': csrftoken,
+      },
+          body: JSON.stringify({'city':'Delhi'}) //JavaScript object of data to POST
+      })
+      .then(response => {
+            return response.json() //Convert response to JSON
+      })
+      .then(data => {
+      //Perform actions with the response data from the view
+      }) {% endcomment %}
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1" />
@@ -43,6 +60,14 @@
 <script type="text/javascript" src="{% static 'pharmacy/js/cart.js' %}"></script>
 <script type="text/javascript">
   var user = '{{request.user}}'
+  {% comment %} let data = {element: "barium"};
+
+  fetch("/patient/dashboard/", {
+    method: "POST", 
+    body: JSON.stringify(data)
+  }).then(res => {
+    console.log("Request complete! response:", res);
+  }); {% endcomment %}
 </script>
 </body>
 </html>

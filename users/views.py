@@ -15,14 +15,14 @@ import json
 import numpy as np
 import joblib
 import pandas as pd
-from agora.views import Agora
+import requests
 from django.http import HttpResponse
-import agorartc
 from django.views import View
 from django.http import HttpResponseRedirect
-from django.shortcuts import render,redirect
+from django.shortcuts import render, redirect
 from django.views import View
 from django.http import HttpResponse
+
 
 def signupUser(request):
     form = CreateUserForm()
@@ -63,13 +63,41 @@ def loginUser(request):
     context = {}
     return render(request, 'login.html', context)
 
+
 def doctorProfileUpdate(request):
     user = request.user
     doctor = Doctor.objects.get(user=user)
-    form = DoctorForm(request.POST or None, instance=doctor)
-    if form.is_valid():
-        form.save()
-    context = {'form': form}
+    workingDays = WorkingDays.objects.filter(doctor=doctor)
+    print(workingDays)
+    doctorForm = DoctorForm(request.POST or None, instance=doctor)
+    if 'submitDoctorForm' in request.POST:
+        if doctorForm.is_valid():
+            doctorForm.save()
+    workingDaysForm = WorkingDaysForm(request.POST or None)
+    if 'submitWorkingDayForm' in request.POST:
+        if workingDaysForm.is_valid():
+            temp = workingDaysForm.save()
+            temp.doctor = doctor
+            temp.save()
+            doctorForm = DoctorForm(None, instance=doctor)
+    slots = {}
+    slots['Monday'] = []
+    slots['Tuesday'] = []
+    slots['Wednesday'] = []
+    slots['Thursday'] = []
+    slots['Friday'] = []
+    slots['Saturday'] = []
+    slots['Sunday'] = []
+    for i in workingDays:
+        j = TimeSlots.objects.filter(day=i)
+        slots[i.day_name] = j
+    timeSlotsForm = TimeSlotsForm(request.POST or None)
+    if 'submitTimeSlotsForm' in request.POST:
+        if timeSlotsForm.is_valid():
+            timeSlotsForm.save()
+            doctorForm = DoctorForm(None, instance=doctor)
+    context = {'timeSlotsForm': TimeSlotsForm, 'monday': slots['Monday'], 'tuesday': slots['Tuesday'], 'wednesday': slots['Wednesday'], 'thursday': slots['Thursday'],
+               'friday': slots['Friday'], 'saturday': slots['Saturday'], 'sunday': slots['Sunday'], 'workingDaysForm': workingDaysForm, 'doctorForm': doctorForm, 'workingDays': workingDays}
     return render(request, 'doctor/doctorProfileUpdate.html', context)
 
 
@@ -81,7 +109,7 @@ def patientProfileUpdate(request):
         form.save()
     context = {'form': form}
     return render(request, 'patientProfileUpdate.html', context)
-    
+
 
 def logoutUser(request):
     logout(request)
@@ -102,39 +130,80 @@ def doctorDashboard(request):
 def patientDashboard(request):
     if not request.user.is_authenticated:
         return redirect('loginUser')
+
+    r = requests.get('https://get.geojs.io/')
+    ip_request = requests.get('https://get.geojs.io/v1/ip.json')
+    ipAdd = ip_request.json()['ip']
+    url = 'https://get.geojs.io/v1/ip/geo/'+ipAdd+'.json'
+    geo_request = requests.get(url)
+    geo_data = geo_request.json()
+    print(geo_data['city'])
+    mycity = geo_data['city']
+
     doctors = Doctor.objects.all()
     myFilter = DoctorFilter(request.GET, queryset=doctors)
     doctors = myFilter.qs
-    context = {'myFilter': myFilter, 'doctors': doctors}
+    print(request.GET.get("city"))
+    inputCity = request.GET.get("city")
+    if(inputCity == None or inputCity == ""):
+        doctors = doctors.filter(city=mycity)
+        inputCity = mycity
+    saareDoctor = []
+    for d in doctors:
+        ekDoctor = []
+        wd = WorkingDays.objects.filter(doctor=d)
+        ekDoctor.append(d.user.id)
+        for day in wd:
+            l = []
+            l.append(day)
+            ts = TimeSlots.objects.filter(day=day)
+            for time in ts:
+                l.append(time)
+            ekDoctor.append(l)
+        saareDoctor.append(ekDoctor)
+    # print(saareDoctor[0])
+    context = {'myFilter': myFilter, 'doctors': doctors,
+               'city': inputCity, 'saareDoctor': saareDoctor}
     return render(request, 'patientDashboard.html', context)
 
 
-def bookAppointment(request, pk):
+def bookAppointment(request, pk, pk2, pk3):
     print(pk)
+    print(pk2)
+    print(pk3)
     user = User.objects.get(id=pk)
     doctor = Doctor.objects.get(user=user)
     user = request.user
     patient = Patient.objects.get(user=user)
-    #print(user.username)
-    #print(doctor.speciality)
-    #print(patient)
+    wd = WorkingDays.objects.get(doctor=doctor, day_name=pk2)
+    print(wd)
+    ts = TimeSlots.objects.get(day=wd, start_time=pk3)
+    print(ts.end_time)
+    # print(user.username)
+    # print(doctor.speciality)
+    # print(patient)
     if request.method == 'POST':
-        Appointment.objects.create(doctor=doctor, patient=patient)
+        Appointment.objects.create(
+            doctor=doctor, patient=patient, time_slot=ts)
+        ts.occupied = True
+        ts.save()
         return redirect('patientDashboard')
     context = {}
     return render(request, 'bookAppointment.html', context)
 
+
 def myprescriptions(request):
     user = request.user
-    patient =  Patient.objects.get(user=user)
+    patient = Patient.objects.get(user=user)
     appointments = patient.appointment_set.all()
     meds = Medecine.objects.all()
     context = {
-        'appointments':appointments,
-        'meds':meds,
+        'appointments': appointments,
+        'meds': meds,
     }
 
-    return render(request,'myprescriptions.html',context)
+    return render(request, 'myprescriptions.html', context)
+
 
 def patientAppointments(request):
     user = request.user
@@ -153,6 +222,7 @@ def doctorAppointments(request):
     context = {'appointments': appointments}
     return render(request, 'doctor/doctorAppointments.html', context)
 
+
 def appointmentMedsdoc(request, pk):
     appointment = Appointment.objects.get(id=pk)
     print(appointment.medecine_set.all())
@@ -166,11 +236,11 @@ def appointmentMedsdoc(request, pk):
     test_case = pd.DataFrame(d).transpose()
     test_case.columns = symp_list
     for symp in appointmentSymptoms:
-        #print(symp.name)
+        # print(symp.name)
         if symp.name in symp_list:
             test_case.loc[0, [symp.name]] = 1
     disease = cls.predict(test_case)
-    #print(disease[0])
+    # print(disease[0])
 
     if request.method == 'POST':
         form = SymptomForm(request.POST)
@@ -181,12 +251,12 @@ def appointmentMedsdoc(request, pk):
             return redirect('appointmentMedsdoc', pk=pk)
     context = {
         'meds': appointmentMeds,
-        'appointment':appointment,
-        'symptoms':appointmentSymptoms,
-        'form':form,
-        'disease':disease[0],
-        'pk':pk,
-        }
+        'appointment': appointment,
+        'symptoms': appointmentSymptoms,
+        'form': form,
+        'disease': disease[0],
+        'pk': pk,
+    }
     return render(request, 'doctor/appointmentMeds.html', context)
 
 
@@ -203,11 +273,11 @@ def appointmentMeds(request, pk):
     test_case = pd.DataFrame(d).transpose()
     test_case.columns = symp_list
     for symp in appointmentSymptoms:
-        #print(symp.name)
+        # print(symp.name)
         if symp.name in symp_list:
             test_case.loc[0, [symp.name]] = 1
     disease = cls.predict(test_case)
-    #print(disease[0])
+    # print(disease[0])
 
     if request.method == 'POST':
         form = SymptomForm(request.POST)
@@ -218,12 +288,13 @@ def appointmentMeds(request, pk):
             return redirect('appointmentMeds', pk=pk)
     context = {
         'meds': appointmentMeds,
-        'appointment':appointment,
-        'symptoms':appointmentSymptoms,
-        'form':form,
-        'disease':disease[0],
-        }
+        'appointment': appointment,
+        'symptoms': appointmentSymptoms,
+        'form': form,
+        'disease': disease[0],
+    }
     return render(request, 'appointmentMeds.html', context)
+
 
 def guessDisease(request, pk):
     appointment = Appointment.objects.get(id=pk)
@@ -245,6 +316,7 @@ def guessDisease(request, pk):
                'symptoms': appointmentSymptoms, 'pk': pk}
     return render(request, 'guessDisease.html', context)
 
+
 def updateAppointmentSymptoms(request, pk):
     appointment = Appointment.objects.get(id=pk)
     print(appointment)
@@ -260,6 +332,7 @@ def updateAppointmentSymptoms(request, pk):
     context = {'form': form, 'meds': appointmentSymptoms}
     return render(request, 'updateAppointmentSymptoms.html', context)
 
+
 def appointmentSymptoms(request, pk):
     appointment = Appointment.objects.get(id=pk)
     print(appointment.symptom_set.all())
@@ -268,13 +341,12 @@ def appointmentSymptoms(request, pk):
     return render(request, 'appointmentSymptoms.html', context)
 
 
-
 def updateAppointment(request, pk):
     appointment = Appointment.objects.get(id=pk)
     form = AppointmentForm(request.POST or None, instance=appointment)
     if form.is_valid():
         form.save()
-        return redirect('appointmentMedsdoc',pk)
+        return redirect('appointmentMedsdoc', pk)
     context = {'form': form, 'pk': pk}
     return render(request, 'doctor/updateAppointment.html', context)
 
@@ -293,7 +365,7 @@ def updateAppointmentMeds(request, pk):
             medi.appointment = appointment
             # print(meds.appointment)
             medi.save()
-            return redirect('appointmentMedsdoc',pk)
+            return redirect('appointmentMedsdoc', pk)
     context = {'form': form, 'meds': appointmentMeds}
     return render(request, 'updateAppointmentMeds.html', context)
 
@@ -322,17 +394,6 @@ def addproduct(request):
             newform = form.save(commit=False)
             newform.Pharmacist = pharmacy
             newform.save()
-            # product_name = form.cleaned_data['product_name']
-            # product_price = form.cleaned_data['product_price']
-            # product_minquantity = form.cleaned_data['product_minquantity']
-            # product_available = form.cleaned_data['product_available']
-            # product_cp = form.cleaned_data['product_cp']
-            # product_quantity = form.cleaned_data['product_quantity']
-            # product_drugs = form.cleaned_data['product_drugs']
-            # product_brand = form.cleaned_data['product_brand']
-            # p = specificproducts(name=product_name, Pharmacist=pharmacy, price=product_price, minquantity=product_minquantity,
-            #                      available=product_available, cp=product_cp, quantity=product_quantity, drugs=product_drugs, brand=product_brand)
-            # p.save()
             return redirect('stock')
 
     context = {
@@ -458,7 +519,7 @@ def walkincart(request):
     return render(request, 'pharmacy/pharmacistcart.html', context)
 
 
-def pinandbuypharmacy(request,pid):
+def pinandbuypharmacy(request, pid):
     if not request.user.is_authenticated:
         return redirect('loginUser')
     customer = request.user.patient
@@ -471,17 +532,29 @@ def pinandbuypharmacy(request,pid):
     appointment = Appointment.objects.get(id=pid)
     prescriptionmedicine = appointment.medecine_set.all()
     pinandbuy = True
+
+    r = requests.get('https://get.geojs.io/')
+    ip_request = requests.get('https://get.geojs.io/v1/ip.json')
+    ipAdd = ip_request.json()['ip']
+    url = 'https://get.geojs.io/v1/ip/geo/'+ipAdd+'.json'
+    geo_request = requests.get(url)
+    geo_data = geo_request.json()
+    print(geo_data['city'])
+    mycity = geo_data['city']
+    print(mycity)
+    pharmacies = pharmacies.filter(PharmaAddress=mycity)
+
     context = {
         'name': name,
         'groupname': groupname,
         'pharmacies': pharmacies,
         'ordercount': ordercount,
-        'pinandbuy':pinandbuy,
-        'prescriptionmedicine':prescriptionmedicine,
-        'pid':pid,
+        'pinandbuy': pinandbuy,
+        'prescriptionmedicine': prescriptionmedicine,
+        'pid': pid,
     }
     return render(request, 'pharmacy/pharmacy.html', context)
-    
+
 
 def pharmacy(request):
     if not request.user.is_authenticated:
@@ -493,16 +566,27 @@ def pharmacy(request):
     groupname = str(request.user.groups.all()[0].name)
     name = request.user.first_name
     pharmacies = Pharmacist.objects.all()
+    r = requests.get('https://get.geojs.io/')
+    ip_request = requests.get('https://get.geojs.io/v1/ip.json')
+    ipAdd = ip_request.json()['ip']
+    url = 'https://get.geojs.io/v1/ip/geo/'+ipAdd+'.json'
+    geo_request = requests.get(url)
+    geo_data = geo_request.json()
+    print(geo_data['city'])
+    mycity = geo_data['city']
+    print(mycity)
+    pharmacies = pharmacies.filter(PharmaAddress=mycity)
     pinandbuy = False
-    
+
     context = {
         'name': name,
         'groupname': groupname,
         'pharmacies': pharmacies,
         'ordercount': ordercount,
-        'pinandbuy':pinandbuy,
+        'pinandbuy': pinandbuy,
     }
     return render(request, 'pharmacy/pharmacy.html', context)
+
 
 def pinandbuystore(request, pharmacyid, pid):
     customer = request.user.patient
@@ -517,7 +601,7 @@ def pinandbuystore(request, pharmacyid, pid):
     appointment = Appointment.objects.get(id=pid)
     prescriptionmedicine = appointment.medecine_set.all()
     alert = False
-    
+
     for item in items:
         if item.product.Pharmacist != pharmacy:
             order.delete()
@@ -536,9 +620,9 @@ def pinandbuystore(request, pharmacyid, pid):
         'groupname': groupname,
         'ordercount': ordercount,
         'alert': alert,
-        'pinandbuy':pinandbuy,
-        'prescriptionmedicine':prescriptionmedicine,
-        'myFilter':myFilter,
+        'pinandbuy': pinandbuy,
+        'prescriptionmedicine': prescriptionmedicine,
+        'myFilter': myFilter,
     }
     return render(request, 'pharmacy/store.html', context)
 
@@ -572,8 +656,8 @@ def store(request, pharmacyid):
         'groupname': groupname,
         'ordercount': ordercount,
         'alert': alert,
-        'pinandbuy':pinandbuy,
-        'myFilter':myFilter,
+        'pinandbuy': pinandbuy,
+        'myFilter': myFilter,
     }
     return render(request, 'pharmacy/store.html', context)
 
@@ -893,30 +977,23 @@ def onlineorderscomplete(request):
     return render(request, 'pharmacy/orders.html', context)
 
 
-
-
-
 # pharmacy material end
 # -----------------------------------------------------------------------------
 
+    # -------------------------------------------------------
+    # new views
 
 
-
-
-
-    #-------------------------------------------------------
-    #new views
-
-
-#----------------------------------------------------------------------------
-#pathologist material here
+# ----------------------------------------------------------------------------
+# pathologist material here
 
 def testsadd(request):
     if not request.user.is_authenticated:
         return redirect('loginUser')
 
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer,complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     groupname = str(request.user.groups.all()[0].name)
     name = request.user.first_name
@@ -933,17 +1010,19 @@ def testsadd(request):
             newform.save()
             return redirect('market')
 
-    context={
-        'form':form,
+    context = {
+        'form': form,
         'name': name,
-        'groupname':groupname,
-        'ordercount':ordercount,
+        'groupname': groupname,
+        'ordercount': ordercount,
     }
-    return render(request,'pathology/testsadd.html',context)
+    return render(request, 'pathology/testsadd.html', context)
+
 
 def pathologistDashboard(request):
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer,complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     groupname = str(request.user.groups.all()[0].name)
     name = request.user.first_name
@@ -953,17 +1032,19 @@ def pathologistDashboard(request):
     products = labtest.objects.filter(Pathologist=pathology)
     if not request.user.is_authenticated:
         return redirect('loginUser')
-    context={
+    context = {
         'name': name,
-        'groupname':groupname,
-        'products':products,
-        'ordercount':ordercount,
+        'groupname': groupname,
+        'products': products,
+        'ordercount': ordercount,
     }
     return render(request, 'pathology/pathologistdashboard.html', context)
 
+
 def alarmtests(request):
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer,complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     groupname = str(request.user.groups.all()[0].name)
     name = request.user.first_name
@@ -973,31 +1054,34 @@ def alarmtests(request):
     products = labtest.objects.filter(Pathologist=pathology)
     if not request.user.is_authenticated:
         return redirect('loginUser')
-    context={
+    context = {
         'name': name,
-        'groupname':groupname,
-        'products':products,
-        'ordercount':ordercount,
+        'groupname': groupname,
+        'products': products,
+        'ordercount': ordercount,
     }
     return render(request, 'pathology/alarmtests.html', context)
+
 
 def tests(request):
     name = request.user.first_name
     groupname = str(request.user.groups.all()[0].name)
     customer = request.user.patient
-    order, created = BookTest.objects.get_or_create(customer=customer,complete=False)
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     items = order.tests_set.all()
     if not request.user.is_authenticated:
         return redirect('loginUser')
-    context={
+    context = {
         'name': name,
-        'groupname':groupname,
-        'items':items,
-        'order':order,
-        'ordercount':ordercount,
+        'groupname': groupname,
+        'items': items,
+        'order': order,
+        'ordercount': ordercount,
     }
     return render(request, 'pathology/tests.html', context)
+
 
 def market(request):
     name = request.user.first_name
@@ -1005,59 +1089,76 @@ def market(request):
     if not request.user.is_authenticated:
         return redirect('loginUser')
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer,complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     items = order.addtests_set.all()
     ordercount = order.get_tests_items
     products = labtest.objects.filter(Pathologist=customer)
-    context={
+    context = {
         'name': name,
-        'groupname':groupname,
-        'items':items,
-        'ordercount':ordercount,
-        'products':products,
+        'groupname': groupname,
+        'items': items,
+        'ordercount': ordercount,
+        'products': products,
     }
     return render(request, 'pathology/market.html', context)
+
 
 def addtests(request):
     name = request.user.first_name
     groupname = str(request.user.groups.all()[0].name)
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer,complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     items = order.addtests_set.all()
     ordercount = order.get_tests_items
     if not request.user.is_authenticated:
         return redirect('loginUser')
-    context={
+    context = {
         'name': name,
-        'groupname':groupname,
-        'items':items,
-        'order':order,
-        'ordercount':ordercount,
+        'groupname': groupname,
+        'items': items,
+        'order': order,
+        'ordercount': ordercount,
     }
     return render(request, 'pathology/addtests.html', context)
+
 
 def pathology(request):
     if not request.user.is_authenticated:
         return redirect('loginUser')
     customer = request.user.patient
-    order, created = BookTest.objects.get_or_create(customer=customer,complete=False)
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     groupname = str(request.user.groups.all()[0].name)
     name = request.user.first_name
     labs = Pathologist.objects.all()
-    
-    context={
+
+    r = requests.get('https://get.geojs.io/')
+    ip_request = requests.get('https://get.geojs.io/v1/ip.json')
+    ipAdd = ip_request.json()['ip']
+    url = 'https://get.geojs.io/v1/ip/geo/'+ipAdd+'.json'
+    geo_request = requests.get(url)
+    geo_data = geo_request.json()
+    print(geo_data['city'])
+    mycity = geo_data['city']
+    print(mycity)
+    labs = labs.filter(PathoAddress=mycity)
+
+    context = {
         'name': name,
-        'groupname':groupname,
-        'labs':labs,
-        'ordercount':ordercount,
+        'groupname': groupname,
+        'labs': labs,
+        'ordercount': ordercount,
     }
-    return render(request,'pathology/pathology.html',context)
+    return render(request, 'pathology/pathology.html', context)
 
 
 def dukan(request, pathologyid):
     customer = request.user.patient
-    order, created = BookTest.objects.get_or_create(customer=customer, complete=False)
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
     name = request.user.first_name
     pathology = Pathologist.objects.get(id=pathologyid)
     groupname = str(request.user.groups.all()[0].name)
@@ -1083,25 +1184,27 @@ def dukan(request, pathologyid):
     }
     return render(request, 'pathology/dukan.html', context)
 
+
 def outcheck(request):
     name = request.user.first_name
     customer = request.user.patient
     groupname = str(request.user.groups.all()[0].name)
-    order, created = BookTest.objects.get_or_create(customer=customer,complete=False)
-   
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
+
     items = order.tests_set.all()
     ordercount = order.get_tests_items
     if not request.user.is_authenticated:
         return redirect('loginUser')
-    context={
+    context = {
         'name': name,
-        'groupname':groupname,
-        'items':items,
-        'order':order,
-        'customer':customer,
-        'ordercount':ordercount,
+        'groupname': groupname,
+        'items': items,
+        'order': order,
+        'customer': customer,
+        'ordercount': ordercount,
     }
-    return render(request,'pathology/outcheck.html', context)
+    return render(request, 'pathology/outcheck.html', context)
 
 
 def flipkart(request):
@@ -1110,15 +1213,16 @@ def flipkart(request):
     name = request.user.first_name
     customer = request.user.patient
     groupname = str(request.user.groups.all()[0].name)
-    order, created = BookTest.objects.get_or_create(customer=customer, complete=False)
-    
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
+
     items = order.tests_set.all()
     ordercount = order.get_tests_items
     if ordercount < 0:
         return redirect('tests')
     for item in items:
         item.product.available = (item.product.available - item.quantity)
-       
+
         item.product.save()
     order.complete = True
     order.save()
@@ -1131,8 +1235,9 @@ def amazon(request):
     name = request.user.first_name
     groupname = str(request.user.groups.all()[0].name)
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer, complete=False)
-   
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
+
     items = order.addtests_set.all()
     ordercount = order.get_tests_items
     if ordercount < 1:
@@ -1151,7 +1256,8 @@ def itsmychoice(request):
     name = request.user.first_name
     groupname = str(request.user.groups.all()[0].name)
     customer = request.user.patient
-    order, created = BookTest.objects.get_or_create(customer=customer, complete=False)
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     orders = BookTest.objects.filter(complete=True, customer=customer)
     items = []
@@ -1177,7 +1283,8 @@ def orderonline(request):
     name = request.user.first_name
     groupname = str(request.user.groups.all()[0].name)
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer, complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     pathology = request.user.pathologist
     orders = BookTest.objects.filter(complete=True, delivered=False)
@@ -1214,7 +1321,8 @@ def orderoffline(request):
     name = request.user.first_name
     groupname = str(request.user.groups.all()[0].name)
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer, complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     pathology = request.user.pathologist
     myorders = AnonyTests.objects.filter(complete=True, customer=pathology)
@@ -1249,7 +1357,8 @@ def successorder(request):
     name = request.user.first_name
     customer = request.user.patient
     groupname = str(request.user.groups.all()[0].name)
-    order, created = BookTest.objects.get_or_create(customer=customer, complete=False)
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     context = {
         'name': name,
@@ -1268,7 +1377,8 @@ def itemupdating(request):
 
     customer = request.user.patient
     product = labtest.objects.get(id=productId)
-    order, created = BookTest.objects.get_or_create(customer=customer, complete=False)
+    order, created = BookTest.objects.get_or_create(
+        customer=customer, complete=False)
     cart, created = Tests.objects.get_or_create(order=order, product=product)
 
     if action == 'add':
@@ -1291,8 +1401,10 @@ def itemupdatedwalkin(request):
 
     customer = request.user.pathologist
     product = labtest.objects.get(id=productId)
-    order, created = AnonyTests.objects.get_or_create(customer=customer, complete=False)
-    cart, created = AddTests.objects.get_or_create(order=order, product=product)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
+    cart, created = AddTests.objects.get_or_create(
+        order=order, product=product)
 
     if action == 'add':
         cart.quantity = 1
@@ -1354,7 +1466,8 @@ def completedorder(request):
     name = request.user.first_name
     groupname = str(request.user.groups.all()[0].name)
     customer = request.user.pathologist
-    order, created = AnonyTests.objects.get_or_create(customer=customer, complete=False)
+    order, created = AnonyTests.objects.get_or_create(
+        customer=customer, complete=False)
     ordercount = order.get_tests_items
     pathology = request.user.pathologist
     orders = BookTest.objects.filter(complete=True, delivered=True)
@@ -1384,88 +1497,13 @@ def completedorder(request):
     }
     return render(request, 'pathology/orderonline.html', context)
 
-#pathologist material end
-#-----------------------------------------------------------------------------
+# pathologist material end
+# -----------------------------------------------------------------------------
 
 
-
-#video call views here 
-
-
-def videocall(request,meetingid):
+def videocall(request, meetingid):
     if not request.user.is_authenticated:
         return redirect('loginUser')
-    
-    return render(request,'index.html',{
-                    'agora_id':'211afdfa7ce3483ab760444a2b23ec91','channel':meetingid,'channel_end_url':'/success/','title':'upcare'})
 
-
-
-
-class AgoraVideoCall(View):
-    app_id=''
-    channel = ''
-    permission_class = 'AllowAny'
-    channel_end_url = '/success/'
-    title = 'Agora Demo'
-
-    def get_permission(self,request,permission_class):
-        if permission_class == 'AllowAny':
-            return True
-        elif permission_class == 'IsAuthenticated':
-            return bool(request.user and request.user.is_authenticated)
-        elif permission_class == 'IsAdmin':
-            return bool(request.user and request.user.is_staff)
-        else:
-            return False
-    
-    def checkAppID(self,appId):
-        if appId == '':
-            return False
-        else:
-            return True
-    
-    def checkChannel(self,channel):
-        if channel == '':
-            return False
-        else:
-            return True
-
-    def checkAll(self,request):
-        if self.get_permission(request,self.permission_class) == True and self.checkAppID(self.app_id) == True  and self.checkChannel(self.channel) == True:
-            return True
-        else:
-            return False
-           
-
-    def get(self,request):
-        stat = self.checkAll(request)
-        print(self.app_id,self.channel)
-        if stat:
-            return render(request,'index.html',{
-                    'agora_id':self.app_id,
-                    'channel':self.channel,
-                    'channel_end_url':self.channel_end_url,
-                    'title':self.title
-                    })
-        else:
-            if not self.checkAppID(self.app_id):
-                return HttpResponse('Programming Error: No App ID')
-            elif not self.get_permissions(request):
-                return HttpResponse('User Permission Error: No Permission')
-            elif not self.checkChannel(request,self.channel):
-                return HttpResponse('Programming Error: No Channel Name')
-            return HttpResponse('Unknown Error')
-        
-
-# allowed_permissions = ['AllowAny','IsAuthenticated','IsAdmin']
-
-class Agora(AgoraVideoCall):
-    app_id=''
-    channel = ''
-    permission_class = 'AllowAny'
-    channel_end_url = '/success/'
-    title = 'Agora Demo'
-
-
-#video call functions end here
+    return render(request, 'index.html', {
+        'agora_id': '211afdfa7ce3483ab760444a2b23ec91', 'channel': meetingid, 'channel_end_url': '/success/', 'title': 'upcare'})
