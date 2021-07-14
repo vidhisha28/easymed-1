@@ -10,8 +10,9 @@
                 <th><h5>Date: {{appointment.date_made}}</h5></th>
             </tr>
         <tr>
-        <th><h5>Meeting link: {{appointment.meeting_link}}</h5></th>
-        <th><h5>Disease Hint(ML MODEL): {{disease}}</h5></th>
+        <th><h5>Meeting link: {{appointment.meeting_link}} <a href="{% url 'videocall' appointment.id %}"><button>Join</button></a></h5></th>
+        
+        <th><h5>Disease Hint(ML MODEL): <a href="{{url}}">{{disease}}</a> (click to know more)</h5></th>
         </tr>
     </table>
     </div>
