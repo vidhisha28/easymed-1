@@ -1512,7 +1512,7 @@ def completedorder(request):
 # pathologist material end
 # -----------------------------------------------------------------------------
 
-
+#made new sectionfor video call
 def videocall(request, meetingid):
     if not request.user.is_authenticated:
         return redirect('loginUser')
